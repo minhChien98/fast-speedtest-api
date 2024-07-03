@@ -1,9 +1,9 @@
-const https = require('https');
-const http = require('http');
-const HttpsProxyAgent = require('https-proxy-agent');
-const url = require('url');
-const Timer = require('./Timer');
-const ApiError = require('./ApiError');
+const https = require("https");
+const http = require("http");
+const HttpsProxyAgent = require("https-proxy-agent");
+const url = require("url");
+const Timer = require("./Timer");
+const ApiError = require("./ApiError");
 
 const DEFAULT_SPEEDTEST_TIMEOUT = 5000; // ms
 const DEFAULT_URL_COUNT = 5;
@@ -19,15 +19,15 @@ class Api {
    */
   constructor(options) {
     if (!options) {
-      throw new Error('You must define options in Api constructor');
+      throw new Error("You must define options in Api constructor");
     }
 
     if (!options.token) {
-      throw new Error('You must define app token');
+      throw new Error("You must define app token");
     }
 
-    if (options.unit && typeof options.unit !== 'function') {
-      throw new Error('Invalid unit');
+    if (options.unit && typeof options.unit !== "function") {
+      throw new Error("Invalid unit");
     }
 
     if (options.proxy) {
@@ -43,7 +43,6 @@ class Api {
     this.unit = options.unit || Api.UNITS.Bps;
   }
 
-
   /**
    * Compute average from array of number
    *
@@ -53,13 +52,12 @@ class Api {
    */
   static average(arr) {
     // remove nulls from list
-    const arrWithoutNulls = arr.filter(e => e);
+    const arrWithoutNulls = arr.filter((e) => e);
     if (arrWithoutNulls.length === 0) {
       return 0;
     }
     return arrWithoutNulls.reduce((a, b) => a + b) / arrWithoutNulls.length;
   }
-
 
   /**
    * Get data from the specified URL
@@ -70,33 +68,34 @@ class Api {
    */
   async get(options) {
     return new Promise((resolve, reject) => {
-      const request = (this.https ? https : http).get(options, (response) => {
-        if (response.headers['content-type'].includes('json')) {
-          response.setEncoding('utf8');
-          let rawData = '';
-          response.on('data', (chunk) => {
-            rawData += chunk;
-          });
-          response.on('end', () => {
-            const parsedData = JSON.parse(rawData);
-            response.data = parsedData;
+      const request = (this.https ? https : http)
+        .get(options, (response) => {
+          if (response.headers["content-type"].includes("json")) {
+            response.setEncoding("utf8");
+            let rawData = "";
+            response.on("data", (chunk) => {
+              rawData += chunk;
+            });
+            response.on("end", () => {
+              const parsedData = JSON.parse(rawData);
+              response.data = parsedData;
+              resolve({
+                response,
+                request,
+              });
+            });
+          } else {
             resolve({
               response,
               request,
             });
-          });
-        } else {
-          resolve({
-            response,
-            request,
-          });
-        }
-      }).on('error', (e) => {
-        reject(e);
-      });
+          }
+        })
+        .on("error", (e) => {
+          reject(e);
+        });
     });
   }
-
 
   /**
    * Get videos to download url from Fast api
@@ -108,9 +107,17 @@ class Api {
     try {
       const targets = [];
       while (targets.length < this.urlCount) {
-        const target = `http${this.https ? 's' : ''}://api.fast.com/netflix/speedtest?https=${this.https ? 'true' : 'false'}&token=${this.token}&urlCount=${this.urlCount - targets.length}`;
+        const target = `http${
+          this.https ? "s" : ""
+        }://api.fast.com/netflix/speedtest?https=${
+          this.https ? "true" : "false"
+        }&token=${this.token}&urlCount=${this.urlCount - targets.length}`;
         const options = url.parse(target);
         if (this.proxy) options.agent = this.proxy;
+        options.headers = {
+          Origin: "https://fast.com",
+          Referer: "https://fast.com",
+        };
         /* eslint-disable no-await-in-loop */
         const { response } = await this.get(options);
         /* eslint-enable no-await-in-loop */
@@ -119,16 +126,18 @@ class Api {
             throw new ApiError({ code: ApiError.CODES.BAD_TOKEN });
           }
           if (response.statusCode === 407) {
-            throw new ApiError({ code: ApiError.CODES.PROXY_NOT_AUTHENTICATED });
+            throw new ApiError({
+              code: ApiError.CODES.PROXY_NOT_AUTHENTICATED,
+            });
           }
           console.log(response.statusCode);
           throw new ApiError({ code: ApiError.CODES.UNKNOWN });
         }
         targets.push(...response.data);
       }
-      return targets.map(target => target.url);
+      return targets.map((target) => target.url);
     } catch (e) {
-      if (e.code === 'ENOTFOUND') {
+      if (e.code === "ENOTFOUND") {
         if (this.https) {
           throw new ApiError({ code: ApiError.CODES.UNREACHABLE_HTTPS_API });
         } else {
@@ -157,16 +166,16 @@ class Api {
     const requestList = [];
 
     const timer = new Timer(this.timeout, () => {
-      requestList.forEach(r => r.abort());
+      requestList.forEach((r) => r.abort());
     });
 
     targets.forEach(async (target) => {
-      const {response, request} = await this.get(target);
+      const { response, request } = await this.get(target);
       requestList.push(request);
-      response.on('data', (data) => {
+      response.on("data", (data) => {
         bytes += data.length;
       });
-      response.on('end', () => {
+      response.on("end", () => {
         // when first video is downloaded
         timer.stop(); // stop timer and execute timer callback
       });
@@ -177,17 +186,21 @@ class Api {
       const recents = new Array(this.bufferSize).fill(null); // list of most recent speeds
       const interval = Math.min(
         this.timeout / this.bufferSize,
-        MAX_CHECK_INTERVAL,
+        MAX_CHECK_INTERVAL
       ); // ms
       const refreshIntervalId = setInterval(() => {
         i = (i + 1) % recents.length; // loop through recents
         recents[i] = bytes / (interval / 1000); // add most recent bytes/second
 
         if (this.verbose) {
-          console.log(`Current speed: ${this.unit(this.constructor.average(recents))} ${this.unit.name}`);
+          console.log(
+            `Current speed: ${this.unit(this.constructor.average(recents))} ${
+              this.unit.name
+            }`
+          );
         }
 
-        bytes = 0;// reset bytes count
+        bytes = 0; // reset bytes count
       }, interval);
 
       timer.addCallback(() => {
@@ -202,15 +215,15 @@ class Api {
 
 Api.UNITS = {
   // rawSpeed is Bps
-  Bps: rawSpeed => rawSpeed,
-  KBps: rawSpeed => rawSpeed / 1000,
-  MBps: rawSpeed => rawSpeed / 1000000,
-  GBps: rawSpeed => rawSpeed / 1000000000,
+  Bps: (rawSpeed) => rawSpeed,
+  KBps: (rawSpeed) => rawSpeed / 1000,
+  MBps: (rawSpeed) => rawSpeed / 1000000,
+  GBps: (rawSpeed) => rawSpeed / 1000000000,
 
-  bps: rawSpeed => rawSpeed * 8,
-  Kbps: rawSpeed => (rawSpeed * 8) / 1000,
-  Mbps: rawSpeed => (rawSpeed * 8) / 1000000,
-  Gbps: rawSpeed => (rawSpeed * 8) / 1000000000,
+  bps: (rawSpeed) => rawSpeed * 8,
+  Kbps: (rawSpeed) => (rawSpeed * 8) / 1000,
+  Mbps: (rawSpeed) => (rawSpeed * 8) / 1000000,
+  Gbps: (rawSpeed) => (rawSpeed * 8) / 1000000000,
 };
 
 module.exports = Api;
