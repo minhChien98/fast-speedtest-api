@@ -103,37 +103,28 @@ class Api {
    * @async
    * @return {Array<string>} List of videos url
    */
-  async getTargets() {
+  async getTargets(urlHost) {
     try {
-      const targets = [];
-      while (targets.length < this.urlCount) {
-        const target = `http${
-          this.https ? "s" : ""
-        }://api.fast.com/netflix/speedtest?https=${
-          this.https ? "true" : "false"
-        }&token=${this.token}&urlCount=${this.urlCount - targets.length}`;
-        const options = url.parse(target);
-        if (this.proxy) options.agent = this.proxy;
-        options.headers = {
-          Origin: "https://fast.com",
-          Referer: "https://fast.com",
-        };
-        /* eslint-disable no-await-in-loop */
-        const { response } = await this.get(options);
-        /* eslint-enable no-await-in-loop */
-        if (response.statusCode !== 200) {
-          if (response.statusCode === 403) {
-            throw new ApiError({ code: ApiError.CODES.BAD_TOKEN });
-          }
-          if (response.statusCode === 407) {
-            throw new ApiError({
-              code: ApiError.CODES.PROXY_NOT_AUTHENTICATED,
-            });
-          }
-          console.log(response.statusCode);
-          throw new ApiError({ code: ApiError.CODES.UNKNOWN });
+      let targets = [];
+      const options = url.parse(urlHost);
+      /* eslint-disable no-await-in-loop */
+      const { response } = await this.get(options);
+      /* eslint-enable no-await-in-loop */
+      if (response.statusCode !== 200) {
+        if (response.statusCode === 403) {
+          throw new ApiError({ code: ApiError.CODES.BAD_TOKEN });
         }
-        targets.push(...response.data);
+        if (response.statusCode === 407) {
+          throw new ApiError({
+            code: ApiError.CODES.PROXY_NOT_AUTHENTICATED,
+          });
+        }
+        console.log(response.statusCode);
+        throw new ApiError({ code: ApiError.CODES.UNKNOWN });
+      }
+      if (response.data) {
+        console.log(response);
+        targets = response.data;
       }
       return targets.map((target) => target.url);
     } catch (e) {
@@ -154,10 +145,10 @@ class Api {
    *
    * @returns {Promise<number>} Speed in selected unit (Default: Bps)
    */
-  async getSpeed() {
+  async getSpeed(urlHost) {
     let targets = null;
     try {
-      targets = await this.getTargets();
+      targets = await this.getTargets(urlHost);
     } catch (e) {
       throw e;
     }
