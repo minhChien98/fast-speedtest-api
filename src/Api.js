@@ -4,6 +4,7 @@ const HttpsProxyAgent = require("https-proxy-agent");
 const url = require("url");
 const Timer = require("./Timer");
 const ApiError = require("./ApiError");
+const { default: axios } = require("axios");
 
 const DEFAULT_SPEEDTEST_TIMEOUT = 5000; // ms
 const DEFAULT_URL_COUNT = 5;
@@ -106,9 +107,8 @@ class Api {
   async getTargets(urlHost) {
     try {
       let targets = [];
-      const options = url.parse(urlHost);
       /* eslint-disable no-await-in-loop */
-      const { response } = await this.get(options);
+      const response = await axios.get(urlHost);
       /* eslint-enable no-await-in-loop */
       if (response.statusCode !== 200) {
         if (response.statusCode === 403) {
