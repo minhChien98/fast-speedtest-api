@@ -104,29 +104,9 @@ class Api {
    * @async
    * @return {Array<string>} List of videos url
    */
-  async getTargets(urlHost) {
+  async getTargets(data) {
     try {
-      let targets = [];
-      /* eslint-disable no-await-in-loop */
-      const response = await axios.get(urlHost);
-      /* eslint-enable no-await-in-loop */
-      if (response.statusCode !== 200) {
-        if (response.statusCode === 403) {
-          throw new ApiError({ code: ApiError.CODES.BAD_TOKEN });
-        }
-        if (response.statusCode === 407) {
-          throw new ApiError({
-            code: ApiError.CODES.PROXY_NOT_AUTHENTICATED,
-          });
-        }
-        console.log(response.statusCode);
-        throw new ApiError({ code: ApiError.CODES.UNKNOWN });
-      }
-      if (response.data) {
-        console.log(response);
-        targets = response.data;
-      }
-      return targets.map((target) => target.url);
+      return data.map((target) => target.url);
     } catch (e) {
       if (e.code === "ENOTFOUND") {
         if (this.https) {
@@ -145,10 +125,10 @@ class Api {
    *
    * @returns {Promise<number>} Speed in selected unit (Default: Bps)
    */
-  async getSpeed(urlHost) {
+  async getSpeed(data) {
     let targets = null;
     try {
-      targets = await this.getTargets(urlHost);
+      targets = await this.getTargets(data);
     } catch (e) {
       throw e;
     }

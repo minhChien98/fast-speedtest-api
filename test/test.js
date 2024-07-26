@@ -2,6 +2,7 @@
 
 const assert = require('assert');
 const Timer = require('../src/Timer');
+const FastSpeedtest = require('../src/Api');
 
 describe('Timer', () => {
   describe('#constructor', () => {
@@ -32,3 +33,25 @@ describe('Timer', () => {
     });
   });
 });
+
+describe('run', () => {
+  it('should run speed test',   () => {
+    const speedtest = new FastSpeedtest({
+      token: "YXNkZmFzZGxmbnNkYWZoYXNkZmhrYWxm", // required
+      verbose: false, // default: false
+      timeout: 10000, // default: 5000
+      https: true, // default: true
+      urlCount: 5, // default: 5
+      bufferSize: 8, // default: 8
+      unit: FastSpeedtest.UNITS.Mbps, // default: Bps
+    });
+    return speedtest
+      .getSpeed("http://localhost:8000/api/speedtest/list")
+      .then((s) => {
+        console.log(`Speed: ${s} Mbps`);
+      })
+      .catch((e) => {
+        console.error(e.message);
+      });
+  });
+})
